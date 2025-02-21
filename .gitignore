@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Logs
 logs
 *.log
@@ -22,3 +23,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+=======
+deep-voice-deepfake-voice-recognition/
+ai-vs-human-text/
+140k-real-and-fake-faces/
+>>>>>>> e1cdad4eac8622c55defe40d91ee472de2d16bfd
