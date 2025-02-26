@@ -88,6 +88,112 @@ export function HomePage({ userEmail }: HomePageProps) {
     }
   };
 
+  
+  const handleAnalyzeContent = async () => {
+    const formData = new FormData();
+  
+    if (textFile) {
+      console.log("Appending text file:", textFile.name);
+      formData.append("text", textFile);
+    }
+    if (audioFile) {
+      console.log("Appending audio file:", audioFile.name);
+      formData.append("audio", audioFile);
+    }
+    if (imageFile) {
+      console.log("Appending image file:", imageFile.name);
+      formData.append("image", imageFile);
+    }
+  
+    if (!textFile && !audioFile && !imageFile) {
+      alert("Please upload at least one file.");
+      return;
+    }
+  
+    try {
+      const response = await fetch("http://127.0.0.1:5000/analyze", {
+        method: "POST",
+        body: formData,
+      });
+  
+      const data = await response.json();
+      console.log("Response:", data);
+      alert(`Analysis Result: ${JSON.stringify(data, null, 2)}`);
+    } catch (error) {
+      console.error("Error:", error);
+      alert("Error analyzing content.");
+    }
+  };
+
+  const handleFileUpload = async () => {
+    if (!imageFile) {
+        alert("Please select a file before uploading.");
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", imageFile);
+    formData.append("type", "image"); // Ensure correct type
+
+    try {
+        const response = await fetch("http://127.0.0.1:5000/analyze", {
+            method: "POST",
+            body: formData,
+        });
+
+        const result = await response.json();
+        alert(`Analysis Result: ${JSON.stringify(result)}`);
+    } catch (error) {
+        console.error("Error uploading file:", error);
+        alert("Failed to upload file.");
+    }
+  };
+
+  const handleUpload = async () => {
+    const selectedFile = textFile || audioFile || imageFile;
+    if (!selectedFile) {
+      alert("Please select a file before uploading.");
+      return;
+    }
+  
+    const fileType = selectedFile.type;
+    let dataType = "";
+  
+    if (fileType.startsWith("image/")) {
+      dataType = "image";
+    } else if (fileType.startsWith("audio/")) {
+      dataType = "audio";
+    } else if (fileType === "text/plain") {
+      dataType = "text";
+    } else {
+      alert("Unsupported file format.");
+      return;
+    }
+  
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+    formData.append("type", dataType);
+  
+    try {
+      const response = await fetch("http://127.0.0.1:5000/analyze", {
+        method: "POST",
+        body: formData,
+      });
+  
+      if (!response.ok) {
+        throw new Error("Upload failed");
+      }
+  
+      const result = await response.json();
+      alert(`Analysis Result: ${JSON.stringify(result)}`);
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      alert("Failed to upload file.");
+    }
+  };
+  
+
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#1a237e] via-[#4a148c] to-[#880e4f]">
       <Navbar userEmail={userEmail} />
@@ -224,17 +330,21 @@ export function HomePage({ userEmail }: HomePageProps) {
             >
               Select image
             </button>
+
+          
+        
           </div>
         </div>
 
         <button
-          className={`bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg text-lg font-semibold transition-colors duration-200 ${
-            !(textFile || audioFile || imageFile) ? 'opacity-50 cursor-not-allowed' : ''
-          }`}
-          disabled={!(textFile || audioFile || imageFile)}
-        >
-          Analyze Content
-        </button>
+  onClick={handleUpload}
+  className={`bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg text-lg font-semibold transition-colors duration-200 ${
+    !(textFile || audioFile || imageFile) ? "opacity-50 cursor-not-allowed" : ""
+  }`}
+  disabled={!(textFile || audioFile || imageFile)}
+>
+  Analyze Content
+</button>
       </main>
     </div>
   );
