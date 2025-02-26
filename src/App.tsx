@@ -5,11 +5,8 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithP
 import { auth, googleProvider } from './lib/firebase';
 import { HomePage } from './components/HomePage';
 import { Contact } from './components/Contact';
-<<<<<<< HEAD
 import { ResultsPage } from "./components/ResultsPage";
-=======
 import { About } from './components/About';
->>>>>>> c882ba8155b4b4ebebb404d5917447d62c0aed25
 
 function App() {
   const [isLogin, setIsLogin] = useState(true);
