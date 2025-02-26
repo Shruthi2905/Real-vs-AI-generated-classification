@@ -5,7 +5,11 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithP
 import { auth, googleProvider } from './lib/firebase';
 import { HomePage } from './components/HomePage';
 import { Contact } from './components/Contact';
+<<<<<<< HEAD
 import { ResultsPage } from "./components/ResultsPage";
+=======
+import { About } from './components/About';
+>>>>>>> c882ba8155b4b4ebebb404d5917447d62c0aed25
 
 function App() {
   const [isLogin, setIsLogin] = useState(true);
@@ -51,6 +55,7 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage userEmail={user.email} />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/about" element={<About />} />
           <Route path="*" element={<Navigate to="/" replace />} />
           <Route path="/results" element={<ResultsPage />} />
         </Routes>
