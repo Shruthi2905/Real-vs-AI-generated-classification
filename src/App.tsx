@@ -5,7 +5,6 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithP
 import { auth, googleProvider } from './lib/firebase';
 import { HomePage } from './components/HomePage';
 import { Contact } from './components/Contact';
-import { ResultsPage } from "./components/ResultsPage";
 import { About } from './components/About';
 
 function App() {
@@ -54,7 +53,6 @@ function App() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/about" element={<About />} />
           <Route path="*" element={<Navigate to="/" replace />} />
-          <Route path="/results" element={<ResultsPage />} />
         </Routes>
       </Router>
     );

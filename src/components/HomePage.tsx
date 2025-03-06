@@ -1,15 +1,26 @@
 import { useState, useRef, DragEvent, ChangeEvent } from 'react';
 import { Navbar } from './Navbar';
-import { FileText, Upload, Image, X } from 'lucide-react';
+import { FileText, Upload, Image, X, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 
 interface HomePageProps {
   userEmail: string | null;
+}
+
+interface AnalysisResult {
+  type: 'text' | 'audio' | 'image';
+  isAIGenerated: boolean;
+  confidence: number;
+  fileName: string;
 }
 
 export function HomePage({ userEmail }: HomePageProps) {
   const [textFile, setTextFile] = useState<File | null>(null);
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [showPopup, setShowPopup] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResults, setAnalysisResults] = useState<AnalysisResult[]>([]);
+  
 
   const textInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
@@ -88,111 +99,57 @@ export function HomePage({ userEmail }: HomePageProps) {
     }
   };
 
-  
-  const handleAnalyzeContent = async () => {
-    const formData = new FormData();
-  
-    if (textFile) {
-      console.log("Appending text file:", textFile.name);
-      formData.append("text", textFile);
-    }
-    if (audioFile) {
-      console.log("Appending audio file:", audioFile.name);
-      formData.append("audio", audioFile);
-    }
-    if (imageFile) {
-      console.log("Appending image file:", imageFile.name);
-      formData.append("image", imageFile);
-    }
-  
-    if (!textFile && !audioFile && !imageFile) {
-      alert("Please upload at least one file.");
-      return;
-    }
-  
-    try {
-      const response = await fetch("http://127.0.0.1:5000/analyze", {
-        method: "POST",
-        body: formData,
-      });
-  
-      const data = await response.json();
-      console.log("Response:", data);
-      alert(`Analysis Result: ${JSON.stringify(data, null, 2)}`);
-    } catch (error) {
-      console.error("Error:", error);
-      alert("Error analyzing content.");
-    }
-  };
+  const handleAnalyze = async () => {
+    setIsAnalyzing(true);
+    setShowPopup(true);
+    // Clear previous results
+    setAnalysisResults([]);
 
-  const handleFileUpload = async () => {
-    if (!imageFile) {
-        alert("Please select a file before uploading.");
-        return;
-    }
+    const fileData = [
+      { file: textFile, type: "text" },
+      { file: audioFile, type: "audio" },
+      { file: imageFile, type: "image" },
+    ];
 
-    const formData = new FormData();
-    formData.append("file", imageFile);
-    formData.append("type", "image"); // Ensure correct type
+    let newResults: AnalysisResult[] = [];
 
-    try {
+    for (const { file, type } of fileData) {
+      if (!file) continue;
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("type", type);
+
+      try {
         const response = await fetch("http://127.0.0.1:5000/analyze", {
-            method: "POST",
-            body: formData,
+          method: "POST",
+          body: formData,
         });
 
-        const result = await response.json();
-        alert(`Analysis Result: ${JSON.stringify(result)}`);
-    } catch (error) {
-        console.error("Error uploading file:", error);
-        alert("Failed to upload file.");
-    }
-  };
+        if (!response.ok) {
+          console.error(`Server error (${type}):`, response.status);
+          continue;
+        }
 
-  const handleUpload = async () => {
-    const selectedFile = textFile || audioFile || imageFile;
-    if (!selectedFile) {
-      alert("Please select a file before uploading.");
-      return;
-    }
-  
-    const fileType = selectedFile.type;
-    let dataType = "";
-  
-    if (fileType.startsWith("image/")) {
-      dataType = "image";
-    } else if (fileType.startsWith("audio/")) {
-      dataType = "audio";
-    } else if (fileType === "text/plain") {
-      dataType = "text";
-    } else {
-      alert("Unsupported file format.");
-      return;
-    }
-  
-    const formData = new FormData();
-    formData.append("file", selectedFile);
-    formData.append("type", dataType);
-  
-    try {
-      const response = await fetch("http://127.0.0.1:5000/analyze", {
-        method: "POST",
-        body: formData,
-      });
-  
-      if (!response.ok) {
-        throw new Error("Upload failed");
+        const data = await response.json();
+        console.log(`${type} Response:`, data);
+
+        // Add to our results array
+        newResults.push({
+          type: type as 'text' | 'audio' | 'image',
+          isAIGenerated: data.isGenerated,
+          confidence: data.confidence,
+          fileName: file.name,
+        });
+      } catch (error) {
+        console.error(`Error analyzing ${type} file:`, error);
       }
-  
-      const result = await response.json();
-      alert(`Analysis Result: ${JSON.stringify(result)}`);
-    } catch (error) {
-      console.error("Error uploading file:", error);
-      alert("Failed to upload file.");
     }
-  };
-  
 
+    // Update state with all new results at once
+    setAnalysisResults(newResults);
+    setIsAnalyzing(false);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#1a237e] via-[#4a148c] to-[#880e4f]">
@@ -330,21 +287,93 @@ export function HomePage({ userEmail }: HomePageProps) {
             >
               Select image
             </button>
-
-          
-        
           </div>
         </div>
 
         <button
-  onClick={handleUpload}
-  className={`bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg text-lg font-semibold transition-colors duration-200 ${
-    !(textFile || audioFile || imageFile) ? "opacity-50 cursor-not-allowed" : ""
-  }`}
-  disabled={!(textFile || audioFile || imageFile)}
->
-  Analyze Content
-</button>
+          onClick={handleAnalyze}
+          className={`bg-purple-600 hover:bg-purple-700 text-white px-8 py-3 rounded-lg text-lg font-semibold transition-colors duration-200 ${
+            !(textFile || audioFile || imageFile) ? "opacity-50 cursor-not-allowed" : ""
+          }`}
+          disabled={!(textFile || audioFile || imageFile)}
+        >
+          Analyze Content
+        </button>
+
+        {/* Analysis Results Popup */}
+        {showPopup && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div className="bg-[#1f1635] rounded-2xl p-8 max-w-2xl w-full border border-purple-500/20 shadow-xl">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-2xl font-bold text-white">Analysis Results</h3>
+                <button
+                  onClick={() => setShowPopup(false)}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {isAnalyzing ? (
+                <div className="flex flex-col items-center justify-center py-8">
+                  <Loader2 className="w-12 h-12 text-purple-400 animate-spin mb-4" />
+                  <p className="text-purple-200">Analyzing your content...</p>
+                </div>
+              ) : analysisResults.length === 0 ? (
+                <div className="text-center py-6 text-purple-300">
+                  <p>No results to display. Try analyzing some content.</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {analysisResults.map((result, index) => (
+                    <div
+                      key={index}
+                      className="bg-white/5 rounded-xl p-6 border border-purple-500/20"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="flex items-center space-x-2 mb-2">
+                            {result.isAIGenerated ? (
+                              <AlertCircle className="w-5 h-5 text-red-400" />
+                            ) : (
+                              <CheckCircle2 className="w-5 h-5 text-green-400" />
+                            )}
+                            <h4 className="text-lg font-semibold text-white">
+                              {result.type.charAt(0).toUpperCase() + result.type.slice(1)} Analysis
+                            </h4>
+                          </div>
+                          <p className="text-sm text-gray-400 mb-4">{result.fileName}</p>
+                        </div>
+                        <span
+                          className={`text-sm font-medium px-3 py-1 rounded-full ${
+                            result.isAIGenerated
+                              ? 'bg-red-400/10 text-red-400'
+                              : 'bg-green-400/10 text-green-400'
+                          }`}
+                        >
+                          {result.isAIGenerated ? 'AI Generated' : 'Human Created'}
+                        </span>
+                      </div>
+                      <div className="mt-4">
+                        <div className="flex justify-between text-sm text-gray-400 mb-2">
+                          <span>Confidence Score</span>
+                          <span>{result.confidence.toFixed(1)}%</span>
+                        </div>
+                        <div className="h-2 bg-purple-900/30 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${
+                              result.isAIGenerated ? 'bg-red-400' : 'bg-green-400'
+                            }`}
+                            style={{ width: `${result.confidence}%` }}></div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
