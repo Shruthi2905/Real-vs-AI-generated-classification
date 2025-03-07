@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navbar } from './Navbar';
-import { Mail, Send, MessageSquare } from 'lucide-react';
+import { Mail, Send, MessageSquare, Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import emailjs from '@emailjs/browser';
+
+emailjs.init("bzvuzhIiMtog_-2Y1");
 
 export function Contact() {
   const [formData, setFormData] = useState({
@@ -10,17 +13,56 @@ export function Contact() {
     message: ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [status, setStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
+
+  // Clear status after 5 seconds
+  useEffect(() => {
+    if (status === 'success' || status === 'error') {
+      const timer = setTimeout(() => {
+        setStatus('idle');
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [status]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle form submission here
-    console.log('Form submitted:', formData);
-    // Reset form
-    setFormData({
-      firstName: '',
-      lastName: '',
-      email: '',
-      message: ''
-    });
+    setStatus('sending');
+
+    try {
+      // Modified template parameters to match EmailJS template
+      const templateParams = {
+        // Include every possible variable name for the message
+        message: formData.message,
+        feedback: formData.message,
+        content: formData.message,
+        user_message: formData.message,
+        message_html: formData.message,
+        // Include all other standard fields
+        from_name: `${formData.firstName} ${formData.lastName}`,
+        from_email: formData.email,
+        reply_to: formData.email,
+        to_name: "Truth Behind Pixels",
+        subject: "Feedback Form Submission"
+      };
+
+      await emailjs.send(
+        'service_1txcm4m',
+        'template_ryjft1g',
+        templateParams
+      );
+
+      setStatus('success');
+      setFormData({
+        firstName: '',
+        lastName: '',
+        email: '',
+        message: ''
+      });
+    } catch (error) {
+      console.error('Error sending email:', error);
+      setStatus('error');
+    }
   };
 
   return (
@@ -48,8 +90,8 @@ export function Contact() {
                   <Mail className="h-6 w-6" />
                   <div>
                     <p className="font-medium">Email</p>
-                    <a href="mailto:sahithiv0305@gmail.com" className="text-violet-300 hover:text-violet-100">
-                      sahithiv0305@gmail.com
+                    <a href="mailto:truthbehindpixels@gmail.com" className="text-violet-300 hover:text-violet-100">
+                      truthbehindpixels@gmail.com
                     </a>
                   </div>
                 </div>
@@ -126,11 +168,38 @@ export function Contact() {
 
                 <button
                   type="submit"
-                  className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-semibold py-3 px-6 rounded-lg flex items-center justify-center space-x-2 transform transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+                  disabled={status === 'sending'}
+                  className={`w-full bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-semibold py-3 px-6 rounded-lg flex items-center justify-center space-x-2 transform transition-all duration-300 ${
+                    status === 'sending' ? 'opacity-75 cursor-not-allowed' : 'hover:scale-[1.02] active:scale-[0.98]'
+                  }`}
                 >
-                  <span>Send Message</span>
-                  <Send className="h-5 w-5" />
+                  {status === 'sending' ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      <span>Sending...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Send Message</span>
+                      <Send className="h-5 w-5" />
+                    </>
+                  )}
                 </button>
+
+                {/* Status Messages */}
+                {status === 'success' && (
+                  <div className="flex items-center space-x-2 text-green-400 bg-green-400/10 p-3 rounded-lg">
+                    <CheckCircle2 className="h-5 w-5" />
+                    <span>Message sent successfully!</span>
+                  </div>
+                )}
+
+                {status === 'error' && (
+                  <div className="flex items-center space-x-2 text-red-400 bg-red-400/10 p-3 rounded-lg">
+                    <XCircle className="h-5 w-5" />
+                    <span>Failed to send message. Please try again.</span>
+                  </div>
+                )}
               </form>
             </div>
           </div>
