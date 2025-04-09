@@ -255,65 +255,59 @@ def analyze_text(file_path):
     return jsonify(response)
 
 def analyze_audio(file_path):
-    """Analyze audio file for AI detection."""
-    logger.info("Starting audio analysis")
+    """Analyze audio file for AI detection with optimized preprocessing matching the training pipeline.
+    
+    Args:
+        file_path: Path to the audio file to analyze
+        
+    Returns:
+        JSON response with prediction results
+    """
+    import os
+    import numpy as np
+    import librosa
+    import traceback
+    from flask import jsonify
+    import logging
+    
+    # Get logger
+    logger = logging.getLogger(__name__)
+    
+    logger.info(f"Starting audio analysis for file: {file_path}")
     
     try:
-        # Load and preprocess audio
-        logger.info(f"Loading audio file: {file_path}")
-        audio, sr = librosa.load(file_path, sr=22050)  # Fixed sample rate for consistency
+        # Get the global audio model - assumes it's already loaded elsewhere
+        global audio_model
+        if 'audio_model' not in globals():
+            logger.error("Audio model not loaded globally")
+            raise ValueError("Audio model not found. Please ensure model is loaded before calling analyze_audio.")
+        
+        # Load audio with parameters matching training pipeline
+        sr = 16000  # Sample rate from training code
+        audio, _ = librosa.load(file_path, sr=sr)
         logger.info(f"Audio loaded. Duration: {len(audio)/sr:.2f}s, Sample rate: {sr}Hz")
         
-        # Make sure we have enough audio data
-        if len(audio) < sr:  # Less than 1 second
-            logger.warning("Audio file too short, padding with zeros")
-            audio = np.pad(audio, (0, sr - len(audio)))
+        # Extract MFCC features with parameters matching training pipeline
+        n_mfcc = 40  # Number of MFCC coefficients
+        max_length = 500  # Fixed feature length from training
         
-        # Extract MFCC features
-        logger.info("Extracting MFCC features")
-        mfccs = librosa.feature.mfcc(y=audio, sr=sr, n_mfcc=40)
-        logger.info(f"MFCC shape: {mfccs.shape}")
+        # Extract MFCCs
+        mfccs = librosa.feature.mfcc(y=audio, sr=sr, n_mfcc=n_mfcc)
+        logger.info(f"MFCC shape before adjustment: {mfccs.shape}")
         
-        # Get model input shape requirements
-        input_shape = audio_model.input_shape
-        logger.info(f"Model input shape: {input_shape}")
-        
-        # Process features based on model requirements
-        if len(input_shape) == 4:  # CNN model expecting (batch, height, width, channels)
-            logger.info("Preparing features for 2D CNN model")
-            # For 2D CNN, we need a 2D representation (like a spectrogram)
-            features = mfccs
-            features = np.expand_dims(features, axis=0)  # Add batch dimension
-            features = np.expand_dims(features, axis=-1)  # Add channel dimension
-            logger.info(f"Processed features shape: {features.shape}")
-            
-        elif len(input_shape) == 3:  # 1D CNN or RNN model expecting (batch, time, features)
-            logger.info("Preparing features for 1D CNN/RNN model")
-            features = mfccs.T  # Transpose to get (time_steps, features)
-            features = np.expand_dims(features, axis=0)  # Add batch dimension
-            logger.info(f"Processed features shape: {features.shape}")
-            
+        # Pad or trim to match expected dimensions
+        if mfccs.shape[1] < max_length:
+            # Pad with zeros if too few frames - exactly as in training
+            mfccs = np.pad(mfccs, ((0, 0), (0, max_length - mfccs.shape[1])), mode='constant')
         else:
-            # For other model types, try a simpler approach
-            logger.info("Preparing features using standard approach")
-            features = np.mean(mfccs.T, axis=0)  # Get mean of each MFCC coefficient
-            features = np.expand_dims(features, axis=0)  # Add batch dimension
+            # Trim if too many frames - exactly as in training
+            mfccs = mfccs[:, :max_length]
             
-            # Reshape if needed to match model input
-            target_shape = [s for s in input_shape if s is not None]
-            if len(target_shape) > 1:
-                # Try to reshape to the target shape
-                target_size = np.prod(target_shape[1:])
-                if len(features.flatten()) != target_size:
-                    # Pad or truncate to match the expected size
-                    flat_features = features.flatten()
-                    if len(flat_features) < target_size:
-                        flat_features = np.pad(flat_features, (0, target_size - len(flat_features)))
-                    else:
-                        flat_features = flat_features[:target_size]
-                    features = flat_features.reshape(target_shape)
-            
-            logger.info(f"Final features shape: {features.shape}")
+        logger.info(f"MFCC shape after adjustment: {mfccs.shape}")
+        
+        # Reshape for the model - matches [1, 40, 500, 1] expected by the model
+        features = mfccs.reshape(1, n_mfcc, max_length, 1)
+        logger.info(f"Final features shape: {features.shape}")
         
         # Make prediction
         logger.info("Making prediction")
@@ -328,12 +322,12 @@ def analyze_audio(file_path):
         
         # Handle different output formats
         if len(prediction.shape) > 1 and prediction.shape[-1] > 1:
-            # Multi-class output - determine which index corresponds to AI-generated
-            ai_index = 1  # Assuming index 1 is AI-generated, 0 is human
+            # Multi-class output
+            ai_index = 1  # Assuming index 1 is AI-generated
             ai_confidence = float(prediction[0][ai_index]) * 100
             human_confidence = float(prediction[0][1-ai_index]) * 100
         else:
-            # Binary output - assuming values close to 1 mean AI-generated
+            # Binary output
             pred_value = float(prediction[0][0])
             ai_confidence = pred_value * 100
             human_confidence = (1 - pred_value) * 100

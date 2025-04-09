@@ -10,9 +10,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
+<<<<<<< HEAD
     "@emailjs/browser": "^4.1.0",
     "bcryptjs": "^2.4.3",
     "idb": "^8.0.0",
+=======
+    "@emailjs/browser": "^4.4.1",
+    "firebase": "^11.3.1",
+>>>>>>> ff0fd821f187db93357bb10bbb93e7cb0c32091b
     "lucide-react": "^0.344.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
