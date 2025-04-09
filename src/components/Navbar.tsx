@@ -1,6 +1,4 @@
 import { User, LogOut, Star } from 'lucide-react';
-import { signOut } from 'firebase/auth';
-import { auth } from '../lib/firebase';
 import { Link, useLocation } from 'react-router-dom';
 
 interface NavbarProps {
@@ -9,14 +7,6 @@ interface NavbarProps {
 
 export function Navbar({ userEmail }: NavbarProps) {
   const location = useLocation();
-  
-  const handleSignOut = async () => {
-    try {
-      await signOut(auth);
-    } catch (error) {
-      console.error('Error signing out:', error);
-    }
-  };
 
   return (
     <nav className="bg-[#1a1f3d] border-b border-purple-500/20">
@@ -70,7 +60,7 @@ export function Navbar({ userEmail }: NavbarProps) {
               <span className="text-gray-300 text-sm">{userEmail}</span>
             </div>
             <button
-              onClick={handleSignOut}
+              onClick={() => window.location.href = '/'}
               className="flex items-center space-x-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 px-3 py-2 rounded-md text-sm font-medium transition-colors"
             >
               <LogOut className="h-4 w-4" />
