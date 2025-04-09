@@ -6,5 +6,11 @@ export default defineConfig({
   plugins: [react()],
   optimizeDeps: {
     exclude: ['lucide-react'],
+    include: ['bcryptjs']
   },
+  resolve: {
+    alias: {
+      'bcryptjs': 'bcryptjs'
+    }
+  }
 });
